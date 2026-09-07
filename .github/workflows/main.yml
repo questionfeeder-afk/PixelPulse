@@ -1,0 +1,54 @@
+name: Build PixelPulse Arcade for macOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Download PixelPulse source
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: PixelPulseArcade_ReleaseKit-2
+        run: xcodegen generate
+
+      - name: Build native Mac app
+        working-directory: PixelPulseArcade_ReleaseKit-2
+        run: |
+          xcodebuild \
+            -project PixelPulseArcade.xcodeproj \
+            -scheme PixelPulseArcade \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Create DMG
+        working-directory: PixelPulseArcade_ReleaseKit-2
+        run: |
+          mkdir -p dmg-root
+          mkdir -p dist
+
+          cp -R "build/Build/Products/Release/PixelPulse Arcade.app" \
+            "dmg-root/PixelPulse Arcade.app"
+
+          ln -s /Applications "dmg-root/Applications"
+
+          hdiutil create \
+            -volname "PixelPulse Arcade" \
+            -srcfolder dmg-root \
+            -format UDZO \
+            -ov \
+            "dist/PixelPulse-Arcade-macOS.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelPulse-Arcade-macOS
+          path: PixelPulseArcade_ReleaseKit-2/dist/PixelPulse-Arcade-macOS.dmg
